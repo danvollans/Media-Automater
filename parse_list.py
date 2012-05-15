@@ -1,11 +1,20 @@
 #!/usr/bin/python
 #-*- coding: utf-8 -*-
 
-#
-#  Need to finish parse_keywords, fix years and movie title (year).  also when looping through dict make sure to add counter to see if we've gotten to the ===== line yet.  then merge the two dicts
-#
-
 import fileinput
+import MySQLdb
+import ConfigParser
+
+config = ConfigParser.SafeConfigParser()
+config.read('config.cfg')
+
+dbhost = config.get('mysqlminiimdb','server')
+dbuser = config.get('mysqlminiimdb','user')
+dbpasswd = config.get('mysqlminiimdb','password')
+dbdb = config.get('mysqlminiimdb','db')
+
+dbconn = MySQLdb.connect (host = dbhost, user = dbuser, passwd = dbpasswd, db = dbdb)
+cursor = dbconn.cursor ()
 
 tvshowlist=dict()
 movielist=dict()
@@ -81,6 +90,7 @@ for line in fileinput.input(['/opt/imdb_lists/movies.list']):
     counter = counter + 1
 
 for key, value in movielist.items():
-    for key2,value2 in value.items():
-        if key2 == "special" or key2 == "year":
-            print key2,value2
+    cursor.execute("insert into movies values(default,\"%s\",%s,0,\"%s\")" % (value['name'],value['year'],','.join(value['special'])))
+
+dbconn.commit()
+dbconn.close()
