@@ -26,9 +26,14 @@ def parse_movies(line):
         fullkey = tvshowtitle[1]+"=="+imdbkey
 
         if fullkey not in tvshowlist:
+            if "/" in year:
+                special = year.split("/")[1]
+            else:
+                special = "NULL"
             tvshowlist[fullkey] = {'name': tvshowtitle[1]}
             tvshowlist[fullkey]['episodes'] = []
             tvshowlist[fullkey]['year'] = year
+            tvshowlist[fullkey]['special'] = special
         if fullkey in tvshowlist and "(#" in tvshowtitle[2]:
             tvshowlist[fullkey]['episodes'].append(season+"-"+episode)
     else:
@@ -46,21 +51,28 @@ def parse_movies(line):
         imdbkey = yeartag+movieinfo[1].split(")")[0]
         imdbkey = imdbkey[1:]
         fullkey = movietitle+"=="+imdbkey
+        specialarr = []
+        special = ""
+        if "/" in year:        
+            specialarr.append(year.split("/"))[1]
+        if "SUSPEND" in movieinfo[1]:
+            special = "SUSPEND"
+            specialarr.append(special)
+        if ") (" in movieinfo[1]:
+            if len(special) > 0:
+                special = movieinfo[1].split(") (")[1].split(")")[0]+"=="+special
+            else:
+                special = movieinfo[1].split(") (")[1].split(")")[0]
+            specialarr.append(special)
+        if len(special) > 0:
+            fullkey = fullkey+"=="+special
+
         if fullkey not in movielist:
             movielist[fullkey] = {'name': movietitle}
             movielist[fullkey]['year'] = year
+            movielist[fullkey]['special'] = specialarr
         else:
-            if "SUSPEND" in movieinfo[1]:
-                special = "SUSPEND"
-            else:
-                special = movieinfo[1].split(") (")[1].split(")")[0]
-            fullkey = fullkey+"=="+special
-            if fullkey not in movielist:
-                movielist[fullkey] = {'name': movietitle}
-                movielist[fullkey]['year'] = year
-            else:
-                # Jeez we're desperate here
-                print "Duplicate Movie found!"+movietitle+" === "+imdbkey
+            print "Duplicate Movie found!"+movietitle+" === "+imdbkey+" === "+special
 
 counter = 1
 for line in fileinput.input(['/opt/imdb_lists/movies.list']):
@@ -69,4 +81,6 @@ for line in fileinput.input(['/opt/imdb_lists/movies.list']):
     counter = counter + 1
 
 for key, value in movielist.items():
-    print key
+    for key2,value2 in value.items():
+        if key2 == "special" or key2 == "year":
+            print key2,value2
