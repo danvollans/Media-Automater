@@ -62,24 +62,25 @@ def parse_movies(line):
         fullkey = movietitle+"=="+imdbkey
         specialarr = []
         special = ""
-        if "/" in year:        
-            specialarr.append(year.split("/"))[1]
+        if "/" in movieinfo[1].split(")")[0]:        
+            specialarr.append(movieinfo[1].split("/")[1].split(")")[0])
         if "SUSPEND" in movieinfo[1]:
             special = "SUSPEND"
             specialarr.append(special)
         if ") (" in movieinfo[1]:
+            specialtmp = movieinfo[1].split(") (")[1].split(")")[0]
             if len(special) > 0:
-                special = movieinfo[1].split(") (")[1].split(")")[0]+"=="+special
+                special = special+"=="+"("+specialtmp+")"
             else:
-                special = movieinfo[1].split(") (")[1].split(")")[0]
-            specialarr.append(special)
+                special = "("+specialtmp+")"
+            specialarr.append("("+specialtmp+")")
         if len(special) > 0:
             fullkey = fullkey+"=="+special
 
         if fullkey not in movielist:
             movielist[fullkey] = {'name': movietitle}
             movielist[fullkey]['year'] = year
-            movielist[fullkey]['special'] = specialarr
+            movielist[fullkey]['special'] = ','.join(specialarr)
         else:
             print "Duplicate Movie found!"+movietitle+" === "+imdbkey+" === "+special
 
@@ -90,7 +91,12 @@ for line in fileinput.input(['/opt/imdb_lists/movies.list']):
     counter = counter + 1
 
 for key, value in movielist.items():
-    cursor.execute("insert into movies values(default,\"%s\",%s,0,\"%s\")" % (value['name'],value['year'],','.join(value['special'])))
+    cursor.execute ("""
+            INSERT INTO movies (idmovie, name, year, have, special)
+            VALUES
+                (default, %(name)s, %(year)s, 0, %(special)s) ON DUPLICATE KEY UPDATE idmovie=idmovie
+
+        """, value)
 
 dbconn.commit()
 dbconn.close()
