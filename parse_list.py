@@ -21,29 +21,48 @@ movielist=dict()
 tvshowkeywordlist=dict()
 moviekeywordlist=dict()
 
+def update_movies(moviehash):
+    for key, value in moviehash.items():
+        cursor.execute ("""
+                INSERT INTO movies (idmovie, name, year, have, special)
+                VALUES
+                    (default, %(name)s, %(year)s, 0, %(special)s) ON DUPLICATE KEY UPDATE idmovie=idmovie
+            """, value)
+
+def update_tvshows(tvshowhash):
+
+
+
 def parse_movies(line):
     if line[:1] == "\"":
-        tvshowtitle = line.split("\"")
+        tvshowtitle = line[1:line.find("\" (")]
+        tvshowinfo = line.split("\"")
         # Parse all the details here
-        if "(#" in tvshowtitle[2]:
-            seasoninfo = tvshowtitle[2][tvshowtitle[2].find('(#')+1:tvshowtitle[2].find(')}')]
+        if "(#" in tvshowinfo[2]:
+            seasoninfo = tvshowinfo[2][tvshowinfo[2].find('(#')+1:tvshowinfo[2].find(')}')]
             season = seasoninfo[seasoninfo.find('#')+1:seasoninfo.find('.')]
             episode = seasoninfo[seasoninfo.find('.')+1:]
 
         year = line.split("\t")[-1].rstrip()
-        imdbkey = tvshowtitle[2][tvshowtitle[2].find('(')+1:tvshowtitle[2].find(')')]        
-        fullkey = tvshowtitle[1]+"=="+imdbkey
+        imdbkey = tvshowinfo[2][tvshowinfo[2].find('(')+1:tvshowinfo[2].find(')')]        
+        fullkey = tvshowtitle+"=="+imdbkey
+        special = ""
+        specialarr = []
+       
+        if "/" in tvshowinfo[2].split(")")[0]:
+            specialarr.append(tvshowinfo[2].split("/")[1].split(")")[0])
+        if "SUSPEND" in tvshowinfo[2]:
+            special = "SUSPEND"
+            specialarr.append(special)
+        if len(special) > 0:
+            fullkey = fullkey+"=="+special
 
         if fullkey not in tvshowlist:
-            if "/" in year:
-                special = year.split("/")[1]
-            else:
-                special = "NULL"
-            tvshowlist[fullkey] = {'name': tvshowtitle[1]}
+            tvshowlist[fullkey] = {'name': tvshowtitle}
             tvshowlist[fullkey]['episodes'] = []
             tvshowlist[fullkey]['year'] = year
-            tvshowlist[fullkey]['special'] = special
-        if fullkey in tvshowlist and "(#" in tvshowtitle[2]:
+            tvshowlist[fullkey]['special'] = ",".join(specialarr)
+        if fullkey in tvshowlist and "(#" in tvshowinfo[2]:
             tvshowlist[fullkey]['episodes'].append(season+"-"+episode)
     else:
         year = line.split("\t")[-1].rstrip()
@@ -90,13 +109,7 @@ for line in fileinput.input(['/opt/imdb_lists/movies.list']):
         parse_movies(line)
     counter = counter + 1
 
-for key, value in movielist.items():
-    cursor.execute ("""
-            INSERT INTO movies (idmovie, name, year, have, special)
-            VALUES
-                (default, %(name)s, %(year)s, 0, %(special)s) ON DUPLICATE KEY UPDATE idmovie=idmovie
-
-        """, value)
+#update_movies(movielist)
 
 dbconn.commit()
 dbconn.close()
