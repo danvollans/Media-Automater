@@ -62,28 +62,6 @@ def parse_movies(line):
                 # Jeez we're desperate here
                 print "Duplicate Movie found!"+movietitle+" === "+imdbkey
 
-def parse_keywords(line):
-    if line[:1] == "\"":
-        tvshowtitle = line.split("\"")
-        if tvshowtitle[1] not in tvshowlist:
-            tvshowlist[tvshowtitle[1]] = {'name': tvshowtitle[1]}
-            tvshowlist[tvshowtitle[1]]['year'] = year
-            tvshowlist[tvshowtitle[1]]['keywords'] = []
-        else:
-            keywords = tvshowtitle[2].split("\t")
-            keyword = keywords[-1].rstrip()
-            tvshowlist[tvshowtitle[1]]['keywords'].append(keyword)
-    else:
-        movietitle = line[0:line.find("(")-1]
-        if movietitle not in movielist:
-            movielist[movietitle] = {'name': movietitle}
-            movielist[movietitle]['year'] = year
-            movielist[movietitle]['keywords'] = []
-        else:
-            keywords = line.split("\t")
-            keyword = keywords[-1].rstrip()
-            movielist[movietitle]['keywords'].append(keyword)
-
 counter = 1
 for line in fileinput.input(['/opt/imdb_lists/movies.list']):
     if counter > 15 and "-----" not in line:
