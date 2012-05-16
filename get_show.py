@@ -19,6 +19,7 @@ config.read('config.cfg')
 
 parser = argparse.ArgumentParser(description='Update or download specific torrents.')
 parser.add_argument('-a', action="store", dest="action")
+parser.add_argument('-l', action="store_true", default=False, dest="lookup")
 parser.add_argument('-n', action="store", dest="medianame")
 parser.add_argument('-i', action="store", dest="mediaid")
 parser.add_argument('-s', action="store", dest="season")
@@ -48,6 +49,9 @@ cursor = dbconn.cursor ()
 
 dbconn2 = MySQLdb.connect (host = dbhost2, user = dbuser2, passwd = dbpasswd2, db = dbdb2)
 cursor2 = dbconn2.cursor ()
+
+dbconn3 = MySQLdb.connect (host = dbhost3, user = dbuser3, passwd = dbpasswd3, db = dbdb3)
+cursor3 = dbconn3.cursor ()
 
 ssh = paramiko.SSHClient()
 ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
@@ -256,7 +260,36 @@ def get_movie(moviename):
 if results.action == "update":
     update_show()
     print "Shows updated."
-if results.action == "show":
+if results.action == "show" and results.lookup is True and results.medianame:
+    showname = results.medianame
+    print "Looking up information for TV Show %s..." % showname
+    cursor3.execute("""select shows.idshow,shows.name,shows.year,shows.special,max(episodes.season) from shows,episodes where lower(name) = lower("%s") and shows.idshow = episodes.idshow""" % showname)
+    information = cursor3.fetchall()
+    col1max = col2max = col3max = col4max = col5max = 0
+    biginfoarr = []
+    for record in information:
+        idshow = str(record[0])
+        name = str(record[1])
+        year = str(record[2])
+        special = str(record[3])
+        seasons = str(record[4])
+        if col1max < len(idshow): 
+            col1max = len(idshow)
+        if col2max < len(name):
+            col2max= len(name)
+        if col3max < len(year):
+            col3max = len(year)
+        if col4max < len(seasons):
+            col4max = len(seasons)
+        if col5max < len(special):
+            col5max = len(seasons)
+        infoarr = [idshow,name,year,seasons,special]
+        biginfoarr.append(infoarr)
+    print "\nID\t".expandtabs(col1max+6)+"Name\t".expandtabs(col2max+8)+"Year(s)\t".expandtabs(col3max+11)+"Seasons\t".expandtabs(col4max+11)+"Special"
+    for info in biginfoarr:
+        print info[0]+"\t".expandtabs(col1max+6-len(info[0]))+info[1]+"\t".expandtabs(col2max+8-len(info[1]))+info[2]+"\t".expandtabs(col3max+11-len(info[2]))+info[3]+"\t".expandtabs(col4max+11-len(info[3]))+info[4]
+
+if results.action == "show" and results.lookup is False and results.mediaid and results.medianame:
     showid = results.mediaid
     showname = results.medianame
     if results.season:
@@ -277,7 +310,33 @@ if results.action == "show":
 	print "Getting %s ALL SEASONS" % showname
 	get_show(showid,showname,"all","all")
 
-if results.action == "movie":
+if results.action == "movie" and results.lookup is True and results.medianame:
+    moviename = results.medianame
+    print "Looking up information for Movie %s..." % moviename
+    cursor3.execute("""select idmovie,name,year,special from movies where lower(name) = lower("%s")""" % moviename)
+    information = cursor3.fetchall()
+    col1max = col2max = col3max = col4max = 0
+    biginfoarr = []
+    for record in information:
+        idmovie = str(record[0])
+        name = str(record[1])
+        year = str(record[2])
+        special = str(record[3])
+        if col1max < len(idmovie):
+            col1max = len(idmovie)
+        if col2max < len(name):
+            col2max= len(name)
+        if col3max < len(year):
+            col3max = len(year)
+        if col4max < len(special):
+            col4max = len(special)
+        infoarr = [idmovie,name,year,special]
+        biginfoarr.append(infoarr)
+    print "\nID\t".expandtabs(col1max+6)+"Name\t".expandtabs(col2max+8)+"Year(s)\t".expandtabs(col4max+11)+"Special"
+    for info in biginfoarr:
+        print info[0]+"\t".expandtabs(col1max+6-len(info[0]))+info[1]+"\t".expandtabs(col2max+8-len(info[1]))+info[2]+"\t".expandtabs(col3max+11-len(info[2]))+info[3]
+
+if results.action == "movie" and results.lookup is False and results.mediaid and results.medianame:
     movieid = results.mediaid
     moviename = results.medianame
     cursor.execute("select idmovie from movies where imdb_id = %s" % movieid)
@@ -286,4 +345,5 @@ if results.action == "movie":
         print "Getting %s" % moviename
 	get_movie(moviename)
     else:
-	print "Already had %s with id %s" % (moviename,movieid)		
+	print "Already had %s with id %s" % (moviename,movieid)
+
