@@ -30,7 +30,28 @@ def update_movies(moviehash):
             """, value)
 
 def update_tvshows(tvshowhash):
-
+    for key, value in tvshowhash.items():
+        cursor.execute("""
+                INSERT INTO shows (idshow, name, year, follow, special)
+                VALUES
+                    (default, %(name)s, %(year)s, 0, %(special)s) ON DUPLICATE KEY UPDATE idshow=idshow
+            """, value)
+# if there idshow is 0, check to find actual idshow from shows table
+        if len(value['episodes']) > 0:
+            idshow = cursor.lastrowid
+            episodelist = []
+            episodes = value['episodes']
+            for episode in episodes:
+                epinfo = episode.split("-")
+                season = epinfo[0]
+                epnum = epinfo[1]
+                eparr = (idshow,season,epnum)
+                episodelist.append(eparr)
+            cursor.executemany("""
+                    INSERT INTO episodes (idepisode, idshow, season, episode, have)
+                    VALUES
+                        (default, %s, %s, %s, 0) ON DUPLICATE KEY UPDATE idepisode=idepisode
+                """, episodelist)
 
 
 def parse_movies(line):
@@ -40,6 +61,8 @@ def parse_movies(line):
         # Parse all the details here
         if "(#" in tvshowinfo[2]:
             seasoninfo = tvshowinfo[2][tvshowinfo[2].find('(#')+1:tvshowinfo[2].find(')}')]
+            if ")" in seasoninfo:
+                seasoninfo = seasoninfo.split('(#')[1]
             season = seasoninfo[seasoninfo.find('#')+1:seasoninfo.find('.')]
             episode = seasoninfo[seasoninfo.find('.')+1:]
 
@@ -49,6 +72,8 @@ def parse_movies(line):
         special = ""
         specialarr = []
        
+        if "shot" in year or "fragment" in year or "xtend" in year or "URL" in year or "episodes" in year:
+            year = line.split("\t")[-2].rstrip()
         if "/" in tvshowinfo[2].split(")")[0]:
             specialarr.append(tvshowinfo[2].split("/")[1].split(")")[0])
         if "SUSPEND" in tvshowinfo[2]:
@@ -110,6 +135,7 @@ for line in fileinput.input(['/opt/imdb_lists/movies.list']):
     counter = counter + 1
 
 #update_movies(movielist)
+update_tvshows(tvshowlist)
 
 dbconn.commit()
 dbconn.close()
