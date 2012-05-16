@@ -1,0 +1,34 @@
+[mysqlmedia]
+user = 
+password = 
+server = 
+db = media
+
+[mysqlminiimdb]
+user = 
+password = 
+server = 
+db = miniimdb
+
+[mysqlimdb]
+user = 
+password = 
+server = 
+db = imdb
+
+[folders]
+root = /media
+movies = /media/Movies
+shows = /media/TV Shows
+unsorted = /media/Unsorted
+renamesrc = /media/Unsorted/renamesrc
+renamefin = /media/Unsorted/renamefin
+
+[seedbox]
+server = 
+user = 
+pass = 
+watchdir = /home/user/watch
+finishdir = /home/user/finished
+moveddir = /home/user/moved
+tmpdir = /home/user/tmp
