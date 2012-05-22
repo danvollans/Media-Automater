@@ -2,6 +2,7 @@
 import os
 import MySQLdb
 import ConfigParser
+import subprocess
 
 config = ConfigParser.SafeConfigParser()
 config.read('config.cfg')
@@ -17,10 +18,10 @@ def get_directory_structure(rootdir):
         parent[folders[-1]] = subdir
     return dir
 
-dbhost = config.get('mysqlmedia','server')
-dbuser = config.get('mysqlmedia','user')
-dbpasswd = config.get('mysqlmedia','password')
-dbdb = config.get('mysqlmedia','db')
+dbhost = config.get('mysqlminiimdb','server')
+dbuser = config.get('mysqlminiimdb','user')
+dbpasswd = config.get('mysqlminiimdb','password')
+dbdb = config.get('mysqlminiimdb','db')
 
 dbconn = MySQLdb.connect (host = dbhost, user = dbuser, passwd = dbpasswd, db = dbdb)
 cursor = dbconn.cursor ()
@@ -33,12 +34,17 @@ moviedict = get_directory_structure(moviedir)
 for folderkey in showdict:
     for showkey in showdict[folderkey]:
         cursor.execute ("select idshow from shows where name = \"%s\"" % showkey)
-        retrow = cursor.fetchone ()
-	if not retrow:
-            print "retrow emtpy %s" % showkey
-	    cursor.execute ("insert into shows values(default,\"%s\",NULL,0)" % showkey)
-        cursor.execute ("select idshow from shows where idshow = LAST_INSERT_ID()")
-        idshow = retrow[0]
+        retrow = cursor.fetchall()
+        if not retrow:
+            print "No show with the name %s in database." % showkey
+            continue
+        if len(retrow) > 1:
+            print "There were multiple possible shows with the name %s" % showkey
+            args = ['python', 'get_show.py', '-a', 'show', '-l', '-n', showkey]
+            showlist = subprocess.Popen(args).wait()
+            print showlist
+            continue
+        idshow = retrow[0][0]
         for seasonkey in showdict[folderkey][showkey]:
             seasonstr = seasonkey.partition(' ')
             seasonnum = seasonstr[2]
@@ -53,13 +59,29 @@ for folderkey in showdict:
                     episodenum1 = episodenummult[0]
                     episodenum2 = episodenummult[2]
                     episodenum2 = episodenum2[1:]
-                    cursor.execute ("insert ignore into episodes values(default,%s,%s,%s)" % (idshow,seasonnum,episodenum1))
-                    cursor.execute ("insert ignore into episodes values(default,%s,%s,%s)" % (idshow,seasonnum,episodenum2))    
+                    cursor.execute ("update episodes set have = 1 where idshow = %s and season = %s and episode = %s" % (idshow,seasonnum,episodenum1))
+#                    print "Episode Added for show %s season %s episode %s" % (idshow,seasonnum,episodenum1)
+                    cursor.execute ("update episodes set have = 1 where idshow = %s and season = %s and episode = %s" % (idshow,seasonnum,episodenum2))
+#                    print "Episode Added for show %s season %s episode %s" % (idshow,seasonnum,episodenum2)
                 else:
-                    cursor.execute ("insert ignore into episodes values(default,%s,%s,%s)" % (idshow,seasonnum,episodenum))
+                    cursor.execute ("update episodes set have = 1 where idshow = %s and season = %s and episode = %s" % (idshow,seasonnum,episodenum))
+#                    print "Episode Added for show %s season %s episode %s" % (idshow,seasonnum,episodenum)
 for folderkey in moviedict:
     for moviekey in moviedict[folderkey]:
         (moviename,split,movieyear) = moviekey.partition(' (')
         movieyear = movieyear.replace(')','')
         movieyear = int(movieyear)
-        cursor.execute ("insert ignore into movies values(default,\"%s\",%s,NULL)" % (moviename,movieyear))
+        cursor.execute ("select idmovie from movies where name = \"%s\" and year = \"%s\"" % (moviename,movieyear))
+        movieretrow = cursor.fetchall()
+        if not movieretrow:
+            print "No movie with the name %s in database." % moviename
+            continue
+        if len(retrow) > 1:
+            print "There were multiple possible movies with the name %s and year %s" % (moviename,movieyear)
+            args = ['python', 'get_show.py', '-a', 'movie', '-l', '-n', moviename, '-y', movieyear]
+            movielist = subprocess.Popen(args).wait()
+            print movielist
+            continue
+        idmovie = movieretrow[0][0]    
+        cursor.execute ("update movies set have = 1 where idmovie = %s" % idmovie)
+#        print "Movie added %s - (%s)" % (moviename,movieyear)
