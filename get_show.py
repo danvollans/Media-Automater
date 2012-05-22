@@ -20,14 +20,12 @@ config.read('config.cfg')
 parser = argparse.ArgumentParser(description='Update or download specific torrents.')
 parser.add_argument('-a', action="store", dest="action")
 parser.add_argument('-l', action="store_true", default=False, dest="lookup")
+parser.add_argument('-y', action="store", dest="mediayear")
 parser.add_argument('-n', action="store", dest="medianame")
 parser.add_argument('-i', action="store", dest="mediaid")
 parser.add_argument('-s', action="store", dest="season")
 parser.add_argument('-e', action="store", dest="episode") 
 results = parser.parse_args()
-
-args = ['python', 'db_updater.py']
-dbupdate = subprocess.Popen(args).wait()
 
 dbhost = config.get('mysqlmedia','server')
 dbuser = config.get('mysqlmedia','user')
@@ -313,8 +311,11 @@ if results.action == "show" and results.lookup is False and results.mediaid and 
 
 if results.action == "movie" and results.lookup is True and results.medianame:
     moviename = results.medianame
+    movieyear = ""
+    if results.mediayear:
+        movieyear = " and year = \"%s\"" % results.mediayear
     print "Looking up information for Movie %s..." % moviename
-    cursor3.execute("""select idmovie,name,year,special from movies where lower(name) = lower("%s")""" % moviename)
+    cursor3.execute("""select idmovie,name,year,special from movies where lower(name) = lower("%s")%s""" % (moviename,movieyear))
     information = cursor3.fetchall()
     col1max = col2max = col3max = col4max = 0
     biginfoarr = []
