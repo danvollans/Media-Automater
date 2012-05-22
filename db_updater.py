@@ -3,9 +3,14 @@ import os
 import MySQLdb
 import ConfigParser
 import subprocess
+import argparse
 
 config = ConfigParser.SafeConfigParser()
 config.read('config.cfg')
+
+parser = argparse.ArgumentParser(description='Update the database to reflect movies and tv shows.')
+parser.add_argument('-i', action="store_true", default=False, dest="interactive")
+commands = parser.parse_args()
 
 def get_directory_structure(rootdir):
     dir = {}
@@ -38,11 +43,19 @@ for folderkey in showdict:
         if not retrow:
             print "No show with the name %s in database." % showkey
             continue
-        if len(retrow) > 1:
+        if len(retrow) > 1 and commands.interactive:
             print "There were multiple possible shows with the name %s" % showkey
             args = ['python', 'get_show.py', '-a', 'show', '-l', '-n', showkey]
-            showlist = subprocess.Popen(args).wait()
-            print showlist
+            showlist = subprocess.Popen(args,stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
+            stdout,stderr = showlist.communicate()
+            print stdout
+            results = stdout.splitlines()
+            possibleshows = []
+            count = 3
+            while count < len(results):
+                possibleshows.append(results[count].split(" ")[0])
+                count = count + 1
+            print "Please enter a ShowID from the list below:\n",possibleshows,"\n"
             continue
         idshow = retrow[0][0]
         for seasonkey in showdict[folderkey][showkey]:
@@ -79,8 +92,7 @@ for folderkey in moviedict:
         if len(retrow) > 1:
             print "There were multiple possible movies with the name %s and year %s" % (moviename,movieyear)
             args = ['python', 'get_show.py', '-a', 'movie', '-l', '-n', moviename, '-y', movieyear]
-            movielist = subprocess.Popen(args).wait()
-            print movielist
+            movielist = Popen(args).wait()
             continue
         idmovie = movieretrow[0][0]    
         cursor.execute ("update movies set have = 1 where idmovie = %s" % idmovie)
