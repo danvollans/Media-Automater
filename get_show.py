@@ -164,7 +164,7 @@ def torinfo_episode(rssurl,show,searcher):
 
 def update_show():
     cursor3.execute ("select name,idshow from shows where follow is true")
-    shows = cursor3.fetchall() 
+    shows = cursor3.fetchall()
     for show in shows:
         showname = show[0]
         idshow = show[1]
@@ -172,7 +172,7 @@ def update_show():
         showurl = 'http://www.dailytvtorrents.org/rss/show/%s?onlynew=yes&only=720&items=1' % show_safe
         (dl_url,dl_season,dl_episode) = torinfo_update(showurl,showname.lower())
         # for show get current season and episode
-        cursor3.execute("select season,max(episode) from episodes where idshow=%s and season = (select max(season) from episodes where idshow = %s)" % (idshow,idshow))
+        cursor3.execute("select season,max(episode) from episodes where idshow=%s and season = (select max(season) from episodes where idshow = %s) and have is true" % (idshow,idshow))
         showinfo = cursor3.fetchone()
         (show_season,show_episode) = showinfo
         if dl_season >= show_season:
@@ -260,6 +260,7 @@ def get_movie(moviename):
 if results.action == "update":
     update_show()
     print "Shows updated."
+
 if results.action == "show" and results.lookup is True and results.medianame:
     showname = results.medianame
     print "Looking up information for TV Show %s..." % showname
