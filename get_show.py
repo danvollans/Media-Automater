@@ -262,7 +262,7 @@ if results.action == "update":
 if results.action == "show" and results.lookup is True and results.medianame:
     showname = results.medianame
     print "Looking up information for TV Show %s..." % showname
-    cursor3.execute("""select shows.idshow,shows.name,shows.year,shows.special,max(episodes.season) from shows,episodes where lower(name) = lower("%s") and shows.idshow = episodes.idshow""" % showname)
+    cursor3.execute("""select shows.idshow,shows.name,shows.year,shows.special,count(distinct season) as season from shows,episodes where lower(name) = lower("%s") and shows.idshow = episodes.idshow group by idshow""" % showname)
     information = cursor3.fetchall()
     col1max = col2max = col3max = col4max = col5max = 0
     biginfoarr = []
