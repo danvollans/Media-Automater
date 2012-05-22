@@ -230,26 +230,26 @@ def get_show(showid,showname,getseason,getepisode):
             epcount = epcount + 1
     try:
         stdin, stdout, stderr = ssh.exec_command("find %s -type f -name '*.tar.gz' | xargs -I {} gunzip {}" % tmpdir)
-    	stdin, stdout, stderr = ssh.exec_command("find %s -type f -name '*.tar' | xargs -I {} mv {} {}.torrent" % tmpdir)
-    	stdin, stdout, stderr = ssh.exec_command("rm %s/*.tar.gz" % tmpdir)    
-    	stdinfin, stdoutfin, stderrfin = ssh.exec_command("ls %s | while read -r file; do mv %s/$file %s/$file; sleep 5; done" % (tmpdir,tmpdir,watchdir))
+        stdin, stdout, stderr = ssh.exec_command("find %s -type f -name '*.tar' | xargs -I {} mv {} {}.torrent" % tmpdir)
+        stdin, stdout, stderr = ssh.exec_command("rm %s/*.tar.gz" % tmpdir)    
+        stdinfin, stdoutfin, stderrfin = ssh.exec_command("ls %s | while read -r file; do mv %s/$file %s/$file; sleep 5; done" % (tmpdir,tmpdir,watchdir))
     except:
-	print "Had some errors on the seedbox."
+        print "Had some errors on the seedbox."
 
 def get_movie(moviename):
     searchterm = "%s 720p" % moviename
     searchterm = searchterm.replace(' ','%20')
     movieurl = "http://kat.ph/search/%s/?rss=1&field=seeders&sorder=desc" % searchterm
     try:
-	torinfo = torinfo_movie(movieurl,moviename.lower())
-	url = torinfo[2].rstrip()
+        torinfo = torinfo_movie(movieurl,moviename.lower())
+        url = torinfo[2].rstrip()
         filename = moviename.replace(' ','-')
         try:
             stdin, stdout, stderr = ssh.exec_command("wget -O %s/%s.tar.gz -c %s" % (tmpdir,filename,url))
-	    stdin, stdout, stderr = ssh.exec_command("find %s -type f -name '*.tar.gz' | xargs -I {} gunzip {}" % tmpdir)
-    	    stdin, stdout, stderr = ssh.exec_command("find %s -type f -name '*.tar' | xargs -I {} mv {} {}.torrent" % tmpdir)
-    	    stdin, stdout, stderr = ssh.exec_command("rm %s/*.tar.gz" % tmpdir)
-    	    stdinfin, stdoutfin, stderrfin = ssh.exec_command("ls %s | while read -r file; do mv %s/$file %s/$file; sleep 5; done" % (tmpdir,tmpdir,watchdir))
+            stdin, stdout, stderr = ssh.exec_command("find %s -type f -name '*.tar.gz' | xargs -I {} gunzip {}" % tmpdir)
+            stdin, stdout, stderr = ssh.exec_command("find %s -type f -name '*.tar' | xargs -I {} mv {} {}.torrent" % tmpdir)
+            stdin, stdout, stderr = ssh.exec_command("rm %s/*.tar.gz" % tmpdir)
+            stdinfin, stdoutfin, stderrfin = ssh.exec_command("ls %s | while read -r file; do mv %s/$file %s/$file; sleep 5; done" % (tmpdir,tmpdir,watchdir))
         except:
             print "Had some seedbox errors."
             print stderr.readlines()
@@ -298,17 +298,17 @@ if results.action == "show" and results.lookup is False and results.mediaid and 
             episode = results.episode
             cursor.execute("select episodes.idshow from episodes,shows where shows.idshow=episodes.idshow and shows.name=\"%s\" and episodes.season=%s and episodes.number=%s;" % (showname,season,episode))
             idepisode = cursor.fetchone()
-	    if not idepisode:
-	        print "Getting %s season %s episode %s..." % (showname,season,episode)
-		get_show(showid,showname,season,episode)
-	    else:
-	        print "Already had %s season %s episode %s..." % (showname,season,episode)
+            if not idepisode:
+                print "Getting %s season %s episode %s..." % (showname,season,episode)
+                get_show(showid,showname,season,episode)
+            else:
+                print "Already had %s season %s episode %s..." % (showname,season,episode)
         else:
-	    print "Getting %s season %s..." % (showname,season)
-	    get_show(showid,showname,season,"all")
+            print "Getting %s season %s..." % (showname,season)
+            get_show(showid,showname,season,"all")
     else:
-	print "Getting %s ALL SEASONS" % showname
-	get_show(showid,showname,"all","all")
+        print "Getting %s ALL SEASONS" % showname
+        get_show(showid,showname,"all","all")
 
 if results.action == "movie" and results.lookup is True and results.medianame:
     moviename = results.medianame
@@ -343,7 +343,7 @@ if results.action == "movie" and results.lookup is False and results.mediaid and
     indb = cursor.fetchone()
     if not indb:
         print "Getting %s" % moviename
-	get_movie(moviename)
+        get_movie(moviename)
     else:
-	print "Already had %s with id %s" % (moviename,movieid)
+        print "Already had %s with id %s" % (moviename,movieid)
 
