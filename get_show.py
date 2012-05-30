@@ -27,29 +27,13 @@ parser.add_argument('-s', action="store", dest="season")
 parser.add_argument('-e', action="store", dest="episode") 
 results = parser.parse_args()
 
-dbhost = config.get('mysqlmedia','server')
-dbuser = config.get('mysqlmedia','user')
-dbpasswd = config.get('mysqlmedia','password')
-dbdb = config.get('mysqlmedia','db')
-
-dbhost2 = config.get('mysqlimdb','server')
-dbuser2 = config.get('mysqlimdb','user')
-dbpasswd2 = config.get('mysqlimdb','password')
-dbdb2 = config.get('mysqlimdb','db')
-
-dbhost3 = config.get('mysqlminiimdb','server')
-dbuser3 = config.get('mysqlminiimdb','user')
-dbpasswd3 = config.get('mysqlminiimdb','password')
-dbdb3 = config.get('mysqlminiimdb','db')
+dbhost = config.get('mysqlminiimdb','server')
+dbuser = config.get('mysqlminiimdb','user')
+dbpasswd = config.get('mysqlminiimdb','password')
+dbdb = config.get('mysqlminiimdb','db')
 
 dbconn = MySQLdb.connect (host = dbhost, user = dbuser, passwd = dbpasswd, db = dbdb)
 cursor = dbconn.cursor ()
-
-dbconn2 = MySQLdb.connect (host = dbhost2, user = dbuser2, passwd = dbpasswd2, db = dbdb2)
-cursor2 = dbconn2.cursor ()
-
-dbconn3 = MySQLdb.connect (host = dbhost3, user = dbuser3, passwd = dbpasswd3, db = dbdb3)
-cursor3 = dbconn3.cursor ()
 
 ssh = paramiko.SSHClient()
 ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
@@ -161,8 +145,8 @@ def torinfo_episode(rssurl,show,searcher):
         return ("no-url","no-title","no-file")
 
 def update_show():
-    cursor3.execute ("select name,idshow from shows where follow is true")
-    shows = cursor3.fetchall()
+    cursor.execute ("select name,idshow from shows where follow is true")
+    shows = cursor.fetchall()
     for show in shows:
         showname = show[0]
         idshow = show[1]
@@ -170,8 +154,8 @@ def update_show():
         showurl = 'http://www.dailytvtorrents.org/rss/show/%s?onlynew=yes&only=720&items=1' % show_safe
         (dl_url,dl_season,dl_episode) = torinfo_update(showurl,showname.lower())
         # for show get current season and episode
-        cursor3.execute("select season,max(episode) from episodes where idshow=%s and season = (select max(season) from episodes where idshow = %s) and have is true" % (idshow,idshow))
-        showinfo = cursor3.fetchone()
+        cursor.execute("select season,max(episode) from episodes where idshow=%s and season = (select max(season) from episodes where idshow = %s) and have is true" % (idshow,idshow))
+        showinfo = cursor.fetchone()
         (show_season,show_episode) = showinfo
         if dl_season >= show_season:
             if dl_episode > show_episode:
@@ -191,8 +175,8 @@ def get_episode(season,showname,theepisode):
 def get_season(season,showname,theepisode):
     # rss fun
     if theepisode == "all":
-        cursor2.execute("select episode_nr from title where episode_of_id=%s and season_nr=%s order by episode_nr asc" % (showid,season))
-        episodelist = cursor2.fetchall()
+        cursor.execute("select episode from episodes where idshow = %s and season = %s order by episode asc" % (showid,season))
+        episodelist = cursor.fetchall()
         urllist = []
         for episode in episodelist:
             episode = "%02d" % (int(episode[0]))
@@ -210,8 +194,8 @@ def get_season(season,showname,theepisode):
 
 def get_show(showid,showname,getseason,getepisode):
     if getseason == "all":
-        cursor2.execute("select distinct(season_nr) from title where episode_of_id = %s and season_nr is not null" % showid)
-        seasonlist = cursor2.fetchall()
+        cursor.execute("select distinct(season) from episodes where idshow = %s" % showid)
+        seasonlist = cursor.fetchall()
     else:
         seasonlist = [getseason]
     for season in seasonlist:
@@ -262,8 +246,8 @@ if results.action == "update":
 if results.action == "show" and results.lookup is True and results.medianame:
     showname = results.medianame
     print "Looking up information for TV Show %s..." % showname
-    cursor3.execute("""select shows.idshow,shows.name,shows.year,shows.special,count(distinct season) as season from shows,episodes where lower(name) = lower("%s") and shows.idshow = episodes.idshow group by idshow""" % showname)
-    information = cursor3.fetchall()
+    cursor.execute("""select shows.idshow,shows.name,shows.year,shows.special,count(distinct season) as season from shows,episodes where lower(name) = lower("%s") and shows.idshow = episodes.idshow group by idshow""" % showname)
+    information = cursor.fetchall()
     col1max = col2max = col3max = col4max = col5max = 0
     biginfoarr = []
     for record in information:
@@ -295,7 +279,7 @@ if results.action == "show" and results.lookup is False and results.mediaid and 
         season = results.season
         if results.episode:
             episode = results.episode
-            cursor.execute("select episodes.idshow from episodes,shows where shows.idshow=episodes.idshow and shows.name=\"%s\" and episodes.season=%s and episodes.number=%s;" % (showname,season,episode))
+            cursor.execute("select idepisode from episodes where idshow = %s and season = %s and episode = %s and have is true" % (showid,season,episode))
             idepisode = cursor.fetchone()
             if not idepisode:
                 print "Getting %s season %s episode %s..." % (showname,season,episode)
@@ -315,8 +299,8 @@ if results.action == "movie" and results.lookup is True and results.medianame:
     if results.mediayear:
         movieyear = " and year = \"%s\"" % results.mediayear
     print "Looking up information for Movie %s..." % moviename
-    cursor3.execute("""select idmovie,name,year,special from movies where lower(name) = lower("%s")%s""" % (moviename,movieyear))
-    information = cursor3.fetchall()
+    cursor.execute("""select idmovie,name,year,special from movies where lower(name) = lower("%s")%s""" % (moviename,movieyear))
+    information = cursor.fetchall()
     col1max = col2max = col3max = col4max = 0
     biginfoarr = []
     for record in information:
@@ -341,7 +325,7 @@ if results.action == "movie" and results.lookup is True and results.medianame:
 if results.action == "movie" and results.lookup is False and results.mediaid and results.medianame:
     movieid = results.mediaid
     moviename = results.medianame
-    cursor.execute("select idmovie from movies where imdb_id = %s" % movieid)
+    cursor.execute("select idmovie from movies where idmovie = %s and have is true" % movieid)
     indb = cursor.fetchone()
     if not indb:
         print "Getting %s" % moviename
