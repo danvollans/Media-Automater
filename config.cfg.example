@@ -1,20 +1,8 @@
-[mysqlmedia]
-user = 
-password = 
-server = 
-db = media
-
 [mysqlminiimdb]
 user = 
 password = 
 server = 
 db = miniimdb
-
-[mysqlimdb]
-user = 
-password = 
-server = 
-db = imdb
 
 [folders]
 root = /media
