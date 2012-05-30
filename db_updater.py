@@ -84,12 +84,12 @@ for folderkey in moviedict:
         (moviename,split,movieyear) = moviekey.partition(' (')
         movieyear = movieyear.replace(')','')
         movieyear = int(movieyear)
-        cursor.execute ("select idmovie from movies where name = \"%s\" and year = \"%s\"" % (moviename,movieyear))
+        cursor.execute ("""select idmovie from movies where name = "%s" and year = "%s" and special not like "%%(VG)%%" """, (moviename,movieyear))
         movieretrow = cursor.fetchall()
         if not movieretrow:
             print "No movie with the name %s in database." % moviename
             continue
-        if len(retrow) > 1:
+        if len(retrow) > 1 and commands.interactive:
             print "There were multiple possible movies with the name %s and year %s" % (moviename,movieyear)
             args = ['python', 'get_show.py', '-a', 'movie', '-l', '-n', moviename, '-y', movieyear]
             movielist = Popen(args).wait()
