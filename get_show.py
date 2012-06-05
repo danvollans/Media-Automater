@@ -7,6 +7,7 @@ import MySQLdb
 import urllib
 from elementtree.ElementTree import parse, XML, fromstring, tostring
 import xml.parsers.expat
+from bs4 import BeautifulSoup
 import re
 import paramiko
 import sys
@@ -66,19 +67,13 @@ def torinfo_movie(rssurl,movie):
             #else:
             #    count = count + 1
         html = urllib.urlopen(hrefret).read()
-        match = re.search('https://torcache.net/(.+?).torrent', html)
-        if match:
-            endfile = match.group(1)
-            endfile = "http://torrage.com/%s.torrent" % endfile
-        else:
-            match = re.search('btih(.+?)&', html)
-            match = match.group(1)[1:]
-            if match:
-                endfile = match
-                endfile = "http://torrage.com/%s.torrent" % endfile
-            else:
-                endfile = "no match"
-        return (hrefret,title,endfile)
+        soup = BeautifulSoup(html)
+        for link in soup.find_all('a'):
+            if link.has_key('href') and link.has_key('title'):
+                if link['title'] == "Magnet link":
+                    magnet = link['href']
+                    magnet = "d10:magnet-uri%s:%se" % (len(magnet),magnet)
+        return (hrefret,title,magnet)
     except BaseException:
         print searcher
         #t, v, tb = sys.exc_info()
@@ -125,19 +120,13 @@ def torinfo_episode(rssurl,show,searcher):
             #else:
             #    count = count + 1
         html = urllib.urlopen(hrefret).read()
-        match = re.search('https://torcache.net/(.+?).torrent', html)
-        if match:
-            endfile = match.group(1)
-            endfile = "http://torrage.com/%s.torrent" % endfile
-        else:
-            match = re.search('btih(.+?)&', html)
-            match = match.group(1)[1:]
-            if match:
-                endfile = match
-                endfile = "http://torrage.com/%s.torrent" % endfile
-            else:
-                endfile = "no match"
-        return (hrefret,title,endfile) 
+        soup = BeautifulSoup(html)
+        for link in soup.find_all('a'):
+            if link.has_key('href') and link.has_key('title'):
+                if link['title'] == "Magnet link":
+                    magnet = link['href']
+                    magnet = "d10:magnet-uri%s:%se" % (len(magnet),magnet)
+        return (hrefret,title,magnet) 
     except BaseException:    
         print searcher
         #t, v, tb = sys.exc_info()
@@ -169,15 +158,15 @@ def get_episode(season,showname,theepisode):
     searchterm = searchterm.replace(' ','%20')
     episodeurl = "http://kat.ph/search/%s/?rss=1&field=seeders&sorder=desc" % searchterm
     torinfo = torinfo_episode(episodeurl,showname.lower(),episodename.lower())
-    url = torinfo[2].rstrip()
-    return url    
+    magnet = torinfo[2].rstrip()
+    return magnet    
 
 def get_season(season,showname,theepisode):
     # rss fun
     if theepisode == "all":
         cursor.execute("select episode from episodes where idshow = %s and season = %s order by episode asc" % (showid,season))
         episodelist = cursor.fetchall()
-        urllist = []
+        maglist = []
         for episode in episodelist:
             episode = "%02d" % (int(episode[0]))
             season = "%02d" % (int(season))
@@ -186,11 +175,11 @@ def get_season(season,showname,theepisode):
             searchterm = searchterm.replace(' ','%20')
             episodeurl = "http://kat.ph/search/%s/?rss=1&field=seeders&sorder=desc" % searchterm
             torinfo = torinfo_episode(episodeurl,showname.lower(),episodename.lower())
-            urllist.append(torinfo[2].rstrip())
-        return urllist
+            maglist.append(torinfo[2].rstrip())
+        return maglist
     else:
-        urllist = get_episode(season,showname,theepisode)
-        return urllist
+        maglist = get_episode(season,showname,theepisode)
+        return maglist
 
 def get_show(showid,showname,getseason,getepisode):
     if getseason == "all":
@@ -200,42 +189,37 @@ def get_show(showid,showname,getseason,getepisode):
         seasonlist = [getseason]
     for season in seasonlist:
         if getepisode == "all":
-            torurl = get_season(season[0],showname,"all")
+            maglist = get_season(season[0],showname,"all")
         else:
-            torurltmp = get_season(season[0],showname,getepisode)
-            torurl = [torurltmp]
+            maglisttmp = get_season(season[0],showname,getepisode)
+            maglist = [maglisttmp]
         epcount = 0
-        for tor in torurl:
+        for magnet in maglist:
             filename = "%s Season %s FN %s" % (showname,season[0],epcount)
             filename = filename.replace(' ','-')
-            stdin, stdout, stderr = ssh.exec_command("wget -O %s/%s.tar.gz -c %s" % (tmpdir,filename,tor))
-            epcount = epcount + 1
-    try:
-        stdin, stdout, stderr = ssh.exec_command("find %s -type f -name '*.tar.gz' | xargs -I {} gunzip {}" % tmpdir)
-        stdin, stdout, stderr = ssh.exec_command("find %s -type f -name '*.tar' | xargs -I {} mv {} {}.torrent" % tmpdir)
-        stdin, stdout, stderr = ssh.exec_command("rm %s/*.tar.gz" % tmpdir)    
-        stdinfin, stdoutfin, stderrfin = ssh.exec_command("ls %s | while read -r file; do mv %s/$file %s/$file; sleep 5; done" % (tmpdir,tmpdir,watchdir))
-    except:
-        print "Had some errors on the seedbox."
+            try:
+                stdin, stdout, stderr = ssh.exec_command("echo \"%s\" > %s/%s.torrent" % (magnet,watchdir,filename))
+                epcount = epcount + 1
+            except:
+                print "Had some errors on the seedbox."
 
-def get_movie(moviename):
+def get_movie(idmovie,moviename):
     searchterm = "%s 720p" % moviename
     searchterm = searchterm.replace(' ','%20')
     movieurl = "http://kat.ph/search/%s/?rss=1&field=seeders&sorder=desc" % searchterm
     try:
         torinfo = torinfo_movie(movieurl,moviename.lower())
-        url = torinfo[2].rstrip()
+        magnet = torinfo[2].rstrip()
         filename = moviename.replace(' ','-')
         try:
-            stdin, stdout, stderr = ssh.exec_command("wget -O %s/%s.tar.gz -c %s" % (tmpdir,filename,url))
-            stdin, stdout, stderr = ssh.exec_command("find %s -type f -name '*.tar.gz' | xargs -I {} gunzip {}" % tmpdir)
-            stdin, stdout, stderr = ssh.exec_command("find %s -type f -name '*.tar' | xargs -I {} mv {} {}.torrent" % tmpdir)
-            stdin, stdout, stderr = ssh.exec_command("rm %s/*.tar.gz" % tmpdir)
-            stdinfin, stdoutfin, stderrfin = ssh.exec_command("ls %s | while read -r file; do mv %s/$file %s/$file; sleep 5; done" % (tmpdir,tmpdir,watchdir))
+            stdin, stdout, stderr = ssh.exec_command("echo \"%s\" > %s/%s.torrent" % (magnet,watchdir,filename))
+            # Update the downloads table
+            cursor.execute("""
+                           INSERT INTO downloads (iddownload,type,fkid,filename) 
+                           values(default,"movies",%s,"%s")""", (idmovie,filename))
+            print "Updated the database"
         except:
             print "Had some seedbox errors."
-            print stderr.readlines()
-            print stferrfin.readlines()
     except:
         print "Really couldn't find Torrent."
 
@@ -329,7 +313,8 @@ if results.action == "movie" and results.lookup is False and results.mediaid and
     indb = cursor.fetchone()
     if not indb:
         print "Getting %s" % moviename
-        get_movie(moviename)
+        get_movie(movieid,moviename)
     else:
         print "Already had %s with id %s" % (moviename,movieid)
 
+dbconn.commit()
