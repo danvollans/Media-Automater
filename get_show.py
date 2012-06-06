@@ -215,8 +215,8 @@ def get_movie(idmovie,moviename):
             stdin, stdout, stderr = ssh.exec_command("echo \"%s\" > %s/%s.torrent" % (magnet,watchdir,filename))
             # Update the downloads table
             cursor.execute("""
-                           INSERT INTO downloads (iddownload,type,fkid,filename) 
-                           values(default,"movies",%s,"%s")""", (idmovie,filename))
+                           INSERT INTO downloads (iddownload,type,fkid,tags,downloading) 
+                           values(default,"movies",%s,"%s",b'0')""", (idmovie,moviename))
             print "Updated the database"
         except:
             print "Had some seedbox errors."
