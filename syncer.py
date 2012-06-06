@@ -11,7 +11,6 @@ import ConfigParser
 config = ConfigParser.SafeConfigParser()
 config.read('config.cfg')
 
-
 ssh = paramiko.SSHClient()
 ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 host = config.get('seedbox','server')
@@ -19,86 +18,83 @@ user = config.get('seedbox','user')
 passwd = config.get('seedbox','pass')
 ssh.connect(host, username=user,password=passwd)
 
-def syncremote():
-    stdindir, stdoutdir, stderrdir = ssh.exec_command("find /home/flipperbaby/finished -maxdepth 1 -type d | sed -n '2,${p;}'")
-    for dirname in stdoutdir.readlines():
-        dirnamefull = dirname.rstrip()
-        dirname = dirname.partition('/home/flipperbaby/finished/')
-        dirname = dirname[2].rstrip()
-        dirnameclean = dirname.replace('~','-')
-        args = ['mkdir', '/mnt/hgfs/Media/Unsorted/%s' % dirnameclean]
-        mkdir = subprocess.Popen(args)
-        stdinfile, stdoutfile, stderrfile = ssh.exec_command("find \"/home/flipperbaby/finished/%s\" -type f" % dirname)
-        dirretarr = []
-        for filename in stdoutfile.readlines():
-            # now do some parsing
-            filename = filename.partition('/home/flipperbaby/')
-            filename = filename[2].rstrip()
-            args = ['aria2c', '-j', '16', '-s', '50', '-x', '16', '--dir=/mnt/hgfs/Media/Unsorted/%s' % dirnameclean, '--check-certificate=false', 'https://%s:%s@flipperbaby.cereal.whatbox.ca/%s' % (user,passwd,filename)]
-            for arg in args:
-                print "%s " % arg
-            download = subprocess.Popen(args).wait()
-            dirretarr.append(download)
-            if download != 0:
-                print "File had error: %s" % filename
-                print "Command was: %s" % args
-        if 1 in dirretarr or not dirretarr:
-            print "Directory had error:P %s" % dirname
+dbhost = config.get('mysqlminiimdb','server')
+dbuser = config.get('mysqlminiimdb','user')
+dbpasswd = config.get('mysqlminiimdb','password')
+dbdb = config.get('mysqlminiimdb','db')
+
+dbconn = MySQLdb.connect (host = dbhost, user = dbuser, passwd = dbpasswd, db = dbdb)
+cursor = dbconn.cursor ()
+
+moviedir = '/mnt/media/Movies/'
+showsdir = '/mnt/media/TV Shows/'
+finishpath = '/home/flipperbaby/finished/'
+
+def acquire(filetype,filepath,fileid,dlid,filename):
+    # get extension
+    garbage, extension = os.path.splitext(filepath)
+    if filetype == "movies":
+        # get the year for the movie
+        cursor.execute("""select year from movies where idmovie = %s""" % fileid)
+        year = cursor.fetchone()[0]
+        dlpath = filepath.split(finishpath)[1]
+        # make remote dir for movie name
+        argsmkdir = ['mkdir', '%s%s (%s)' % (moviedir,filename,year)]
+        mkdir = subprocess.Popen(argsmkdir)
+        # update the database 
+        cursor.execute("""update downloads set downloading = b'1' where iddownload = %s""" % dlid)
+        dbconn.commit()
+        argsaria = ['aria2c', '-j', '16', '-s', '50', '-x', '16', '--dir=%s%s (%s)' % (moviedir,filename,year), '--out=%s (%s)%s' % (filename,year,extension), '--check-certificate=false', 'https://%s:%s@cereal.whatbox.ca/private/%s/finished/%s' % (user,passwd,user,dlpath)]
+        aria = subprocess.Popen(argsaria).wait()
+        if aria == 0:
+            # update both database tables
+            cursor.execute("""delete from downloads where iddownload = %s""" % dlid)
+            cursor.execute("""update movies set have = b'1' where idmovie = %s""" % fileid)
+        else :
+            cursor.execute("""update downloads set downloading = b'0' where iddownload = %s""" % dlid)
+            dbconn.commit()
+    else:
+        print "poop"        
+
+def getfiles():
+    filetypes = ['.mkv','.avi','.mp4','3gp']
+    stdin, stdout, stderr = ssh.exec_command("find /home/flipperbaby/finished -maxdepth 2 -type f | sed -n '2,${p;}'")
+    files = []
+    for filepath in stdout.readlines():
+        filepath = filepath.rstrip()
+        if any(x in filepath for x in filetypes):
+            files.append(filepath)
+    return files
+
+# get a list of current downloading torrents
+cursor.execute("""select iddownload,type,fkid,tags from downloads where downloading is not true""")
+downloads = cursor.fetchall()
+
+# get a list of current finished torrents
+files = getfiles()
+
+for download in downloads:
+    # check to see if tags are in array
+    filetype = download[1]
+    tag = download[3]
+    fileid = download[2]
+    dlid = download[0]
+    finished = 0
+    match = [s for s in files if tag.lower() in s.lower()]
+    if match:
+        finished = 1
+    else:
+        tag = tag.replace(' ', '.')
+        match = [s for s in files if tag.lower() in s.lower()]
+        if match:
+            finished = 1
         else:
-            stdindirmv, stdoutdirmv, stderrdirmv = ssh.exec_command("mv \"%s\" /home/flipperbaby/moved" % dirnamefull)
-            print "Directory moved: %s\n" % dirname
+            tag = tag.replace('.', '-')
+            match = [s for s in files if tag.lower() in s.lower()]
+            if match:
+                finished = 1
+    if finished > 0 and match:
+        acquire(filetype,match[0],fileid,dlid,tag)
 
-    stdinind, stdoutind, stderrind = ssh.exec_command("find /home/flipperbaby/finished -maxdepth 1 -type f")
-    for indfile in stdoutind.readlines():
-        indfilefull = indfile.rstrip()
-        indfile = indfile.partition('/home/flipperbaby/')
-        indfile = indfile[2].rstrip()
-        indargs = ['aria2c', '-j', '16', '-s', '50', '-x', '16', '--dir=/mnt/hgfs/Media/Unsorted', '--check-certificate=false', 'https://%s:%s@flipperbaby.cereal.whatbox.ca/%s' % (user,passwd,indfile)]
-        inddownload = subprocess.Popen(indargs).wait()
-        if inddownload != 0:
-            print "File had error: %s" % indfile
-            print "Command was: %s\n" % indargs
-        else:
-            stdinfilemv, stdoutfilemv, stderrfilemv = ssh.exec_command("mv %s /home/flipperbaby/moved" % indfilefull)
-            print "File moved: %s\n" % indfile
-    ssh.close()
-def mover():
-    fileList = []
-    mediadir = '/mnt/hgfs/Media/Unsorted'
-    rootdir = mediadir
-    for root, subFolders, files in os.walk(rootdir):
-        if "rename_src" in root or "rename_fin" in root:
-            continue
-        for filen in files:
-            fileext = filen[-3:]
-            if fileext in ['avi', 'dat', 'mp4', 'mkv', 'vob']:
-                fileList.append(os.path.join(root,filen))
-    for media in fileList:
-        media = media.rstrip()
-        mediaargs = ['mv', media, '%s/rename_src/' % mediadir]
-        mediamv = subprocess.Popen(mediaargs).wait()
+dbconn.commit()
 
-def renamed_mover():
-    renamedir = '/mnt/hgfs/Media/Unsorted/rename_fin'
-    moviedir = '/mnt/hgfs/Media/Movies/'
-    for movie ,subFolders, files in os.walk(renamedir):
-        movie = movie.rstrip()
-        if movie == "/mnt/hgfs/Media/Unsorted/rename_fin":
-            continue
-        movieargs = ['mv','%s' % movie, moviedir]
-        movielist = subprocess.Popen(movieargs).wait()
-    
-    tvdir = '/mnt/hgfs/Media/TV Shows'
-    for episode in os.listdir(renamedir):
-        (showname,split,series) = episode.partition(' - s')
-        (season,split,number) = series.partition('e')
-        mkdirargs = ['mkdir', '%s/%s' % (tvdir,showname)]
-        mkdir = subprocess.Popen(mkdirargs).wait()
-        mkdirargs2 = ['mkdir', '%s/%s/Season %s' % (tvdir,showname,int(season))]
-        mkdir2 = subprocess.Popen(mkdirargs2).wait()
-        showargs = ['mv','%s/%s' % (renamedir,episode), '%s/%s/Season %s/' % (tvdir,showname,int(season))]
-        showlist = subprocess.Popen(showargs).wait()
-
-syncremote()
-mover()
-renamed_mover()
