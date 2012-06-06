@@ -25,7 +25,8 @@ CREATE TABLE `downloads` (
   `iddownload` mediumint(10) unsigned NOT NULL AUTO_INCREMENT,
   `type` enum('movies','episodes') NOT NULL,
   `fkid` mediumint(10) unsigned NOT NULL,
-  `filename` varchar(240) NOT NULL,
+  `tags` varchar(240) NOT NULL,
+  `downloading` bit(1) DEFAULT b'0',
   PRIMARY KEY (`iddownload`),
   UNIQUE KEY `iddownload` (`iddownload`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
@@ -94,4 +95,4 @@ CREATE TABLE `shows` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2012-06-04 21:03:38
+-- Dump completed on 2012-06-05 18:05:32
