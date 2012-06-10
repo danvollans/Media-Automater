@@ -203,18 +203,17 @@ def get_show(showid,showname,getseason,getepisode):
         else:
             maglisttmp = get_season(season[0],showname,getepisode)
             maglist = [maglisttmp]
-        epcount = 0
+        epcount = 1
+        seasonpadded = "%02d" % int(season[0])
         for magnet in maglist:
-            filename = "%s Season %s FN %s" % (showname,season[0],epcount)
+            episodepadded = "%02d" % int(epcount)
+            filename = "%s Season %s File %s" % (showname,seasonpadded,episodepadded)
             filename = filename.replace(' ','-')
             try:
-                stdin, stdout, stderr = ssh.exec_command("echo \"%s\" > %s/%s.torrent" % (magnet,watchdir,filename))
-                cursor.execute("""
-                           SELECT idepisode from episodes where idshow = %s and season = %s and episode = %s """, (showid,season[0],epcount))
+                stdin, stdout, stderr = ssh.exec_command("echo \"%s\" > %s/%s.torrent" % (magnet,watchdir,modify_badchars(filename)))
+                cursor.execute("""SELECT idepisode from episodes where idshow = %s and season = %s and episode = %s """, (showid,season[0],epcount))
                 idepisode = cursor.fetchone()[0]
-                cursor.execute("""
-                           INSERT INTO downloads (iddownload,type,fkid,tags,downloading)
-                           values(default,"episodes",%s,"%s s%se%s",b'0')""", (idepisode,showname,season[0],epcount))
+                cursor.execute("INSERT INTO downloads (iddownload,type,fkid,tags,downloading) values(default,\"episodes\",%s,\"%s s%se%s\",b'0')" % (idepisode,modify_badchars(showname),seasonpadded,episodepadded))
                 epcount = epcount + 1
             except:
                 print "Had some errors on the seedbox."
@@ -231,9 +230,7 @@ def get_movie(idmovie,moviename):
         try:
             stdin, stdout, stderr = ssh.exec_command("echo \"%s\" > %s/%s.torrent" % (magnet,watchdir,filename))
             # Update the downloads table
-            cursor.execute("""
-                           INSERT INTO downloads (iddownload,type,fkid,tags,downloading) 
-                           values(default,"movies",%s,"%s",b'0')""", (idmovie,moviename))
+            cursor.execute("INSERT INTO downloads (iddownload,type,fkid,tags,downloading) values(default,\"movies\",%s,\"%s\",b'0')" % (idmovie,moviename))
             print "Updated the database"
         except:
             print "Had some seedbox errors."
