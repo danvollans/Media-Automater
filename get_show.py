@@ -209,6 +209,12 @@ def get_show(showid,showname,getseason,getepisode):
             filename = filename.replace(' ','-')
             try:
                 stdin, stdout, stderr = ssh.exec_command("echo \"%s\" > %s/%s.torrent" % (magnet,watchdir,filename))
+                cursor.execute("""
+                           SELECT idepisode from episodes where idshow = %s and season = %s and episode = %s """, (showid,season[0],epcount))
+                idepisode = cursor.fetchone()[0]
+                cursor.execute("""
+                           INSERT INTO downloads (iddownload,type,fkid,tags,downloading)
+                           values(default,"episodes",%s,"%s s%se%s",b'0')""", (idepisode,showname,season[0],epcount))
                 epcount = epcount + 1
             except:
                 print "Had some errors on the seedbox."
