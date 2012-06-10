@@ -46,6 +46,13 @@ ssh.connect(host, username=user,password=passwd)
 watchdir = config.get('seedbox','watchdir')
 tmpdir = config.get('seedbox','tmpdir')
 
+def modify_badchars(namestring):
+    # replace & with and
+    namestring = namestring.replace('&','and')
+    # replace ? with nothing
+    namestring = namestring.replace('?','')
+    return namestring
+
 def torinfo_movie(rssurl,movie):
     try:
         try:
@@ -138,6 +145,7 @@ def update_show():
     shows = cursor.fetchall()
     for show in shows:
         showname = show[0]
+        showname = modify_badchars(showname)
         idshow = show[1]
         show_safe = showname.replace(" ","-").lower()
         showurl = 'http://www.dailytvtorrents.org/rss/show/%s?onlynew=yes&only=720&items=1' % show_safe
@@ -156,6 +164,7 @@ def get_episode(season,showname,theepisode):
     searchterm = "%s S%sE%s 720p" % (showname,season,episode)
     episodename = "S%sE%s" % (season,episode)
     searchterm = searchterm.replace(' ','%20')
+    searchterm = modify_badchars(searchterm)
     episodeurl = "http://kat.ph/search/%s/?rss=1&field=seeders&sorder=desc" % searchterm
     torinfo = torinfo_episode(episodeurl,showname.lower(),episodename.lower())
     magnet = torinfo[2].rstrip()
@@ -173,6 +182,7 @@ def get_season(season,showname,theepisode):
             searchterm = "%s S%sE%s 720p" % (showname,season,episode)
             episodename = "S%sE%s" % (season,episode)
             searchterm = searchterm.replace(' ','%20')
+            searchterm = modify_badchars(searchterm)
             episodeurl = "http://kat.ph/search/%s/?rss=1&field=seeders&sorder=desc" % searchterm
             torinfo = torinfo_episode(episodeurl,showname.lower(),episodename.lower())
             maglist.append(torinfo[2].rstrip())
@@ -206,6 +216,7 @@ def get_show(showid,showname,getseason,getepisode):
 def get_movie(idmovie,moviename):
     searchterm = "%s 720p" % moviename
     searchterm = searchterm.replace(' ','%20')
+    searchterm = modify_badchars(searchterm)
     movieurl = "http://kat.ph/search/%s/?rss=1&field=seeders&sorder=desc" % searchterm
     try:
         torinfo = torinfo_movie(movieurl,moviename.lower())
