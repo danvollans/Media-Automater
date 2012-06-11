@@ -15,8 +15,9 @@ import argparse
 import subprocess
 import ConfigParser
 
+installpath = '/home/dan/codedevel/Media-Automater'
 config = ConfigParser.SafeConfigParser()
-config.read('config.cfg')
+config.read('%s/config.cfg' % installpath)
 
 parser = argparse.ArgumentParser(description='Update or download specific torrents.')
 parser.add_argument('-a', action="store", dest="action")
