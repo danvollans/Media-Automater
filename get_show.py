@@ -219,8 +219,8 @@ def get_show(showid,showname,getseason,getepisode):
             except:
                 print "Had some errors on the seedbox."
 
-def get_movie(idmovie,moviename):
-    searchterm = "%s 720p" % moviename
+def get_movie(idmovie,moviename,movieyear):
+    searchterm = "%s %s 720p" % (moviename,movieyear)
     searchterm = searchterm.replace(' ','%20')
     searchterm = modify_badchars(searchterm)
     movieurl = "http://kat.ph/search/%s/?rss=1&field=seeders&sorder=desc" % searchterm
@@ -324,11 +324,12 @@ if results.action == "movie" and results.lookup is True and results.medianame:
 if results.action == "movie" and results.lookup is False and results.mediaid and results.medianame:
     movieid = results.mediaid
     moviename = results.medianame
+    movieyear = results.year
     cursor.execute("select idmovie from movies where idmovie = %s and have is true" % movieid)
     indb = cursor.fetchone()
     if not indb:
         print "Getting %s" % moviename
-        get_movie(movieid,moviename)
+        get_movie(movieid,moviename,movieyear)
     else:
         print "Already had %s with id %s" % (moviename,movieid)
 
