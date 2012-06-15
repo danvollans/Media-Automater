@@ -7,6 +7,7 @@ import subprocess
 import os
 import sys
 import ConfigParser
+import time
 
 config = ConfigParser.SafeConfigParser()
 config.read('config.cfg')
@@ -54,7 +55,32 @@ def acquire(filetype,filepath,fileid,dlid,filename):
             cursor.execute("""update downloads set downloading = b'0' where iddownload = %s""" % dlid)
             dbconn.commit()
     else:
-        print "poop"        
+        dlpath = filepath.split(finishpath)[1]
+        # Get the actual Show Name
+        cursor.execute("""select shows.name from downloads,episodes,shows where downloads.iddownload = %s and downloads.fkid = episodes.idepisode and episodes.idshow = shows.idshow""" % dlid)
+        showname = cursor.fetchone()[0]
+        showname.replace('&','and')
+        # Check if TV Show / Season directories already exist
+        # Get the season for the episode
+        cursor.execute("""select episodes.season,episodes.episode from episodes,shows where episodes.idepisode = %s""" % fileid)
+        season = cursor.fetchone()[0]
+        seasonpad = "%02d" % (season)
+        episode = cursor.fetchone()[1]
+        episodepad = "%02d" % (episode)
+        argsmkdir = ['mkdir', '-p', '%s%s/Season %s/' % (showsdir,showname,season)]
+        mkdir = subprocess.Popen(argsmkdir)
+        # update the database
+        cursor.execute("""update downloads set downloading = b'1' where iddownload = %s""" % dlid)
+        dbconn.commit()
+        argsaria = ['aria2c', '-j', '16', '-s', '50', '-x', '16', '--dir=%s%s/Season %s/)' % (showsdir,showname,season), '--out=%s - s%se%s%s' % (showname,seasonpad,episodepad,extension), '--check-certificate=false', 'https://%s:%s@cereal.whatbox.ca/private/%s/finished/%s' % (user,passwd,user,dlpath)]
+        aria = subprocess.Popen(argsaria).wait()
+        if aria == 0:
+            # update both database tables
+            cursor.execute("""delete from downloads where iddownload = %s""" % dlid)
+            cursor.execute("""update episodes set have = b'1' where idepisode = %s""" % fileid)
+        else :
+            cursor.execute("""update downloads set downloading = b'0' where iddownload = %s""" % dlid)
+            dbconn.commit()
 
 def getfiles():
     filetypes = ['.mkv','.avi','.mp4','3gp']
@@ -66,9 +92,17 @@ def getfiles():
             files.append(filepath)
     return files
 
+def extractrars():
+    stdin, stdout, stderr = ssh.exec_command("find /home/flipperbaby/finished -maxdepth 2 -name *.rar | xargs -L1 -I{} unrar e {}")
+    while not stdout.channel.closed or not stderr.channel.closed:
+        time.sleep(10)
+
 # get a list of current downloading torrents
 cursor.execute("""select iddownload,type,fkid,tags from downloads where downloading is not true""")
 downloads = cursor.fetchall()
+
+# extract remote rars
+extractrars()
 
 # get a list of current finished torrents
 files = getfiles()
