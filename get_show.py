@@ -152,12 +152,18 @@ def update_show():
         showurl = 'http://www.dailytvtorrents.org/rss/show/%s?onlynew=yes&only=720&items=1' % show_safe
         (dl_url,dl_season,dl_episode) = torinfo_update(showurl,showname.lower())
         # for show get current season and episode
-        cursor.execute("select season,max(episode) from episodes where idshow=%s and season = (select max(season) from episodes where idshow = %s) and have is true" % (idshow,idshow))
+        cursor.execute("select max(episodes2.episode),max(episodes2.season) from episodes left join episodes episodes2 on episodes.idepisode=episodes2.idepisode and episodes.idshow = %s and episodes2.season = (select max(season) from episodes where idshow = %s);" % (idshow,idshow))
         showinfo = cursor.fetchone()
         (show_season,show_episode) = showinfo
         if dl_season >= show_season:
             if dl_episode > show_episode:
                 stdin, stdout, stderr = ssh.exec_command("wget -P %s -c %s" % (watchdir,dl_url))
+                # get the idepisode
+                seasonpadded = "%02d" % int(dl_season)
+                episodepadded = "%02d" % int(dl_episode)
+                cursor.execute("""select idepisode from episodes where idshow = %s and episode = %s and season = %s""" % (idshow,dl_season,dl_episode))
+                idepisode = cursor.fetchone()[0]
+                cursor.execute("INSERT INTO downloads (iddownload,type,fkid,tags,downloading) values(default,\"episodes\",%s,\"%s s%se%s\",b'0')" % (idepisode,modify_badchars(showname),seasonpadded,episodepadded))
 
 def get_episode(season,showname,theepisode):
     episode = "%02d" % (int(theepisode))
@@ -324,7 +330,7 @@ if results.action == "movie" and results.lookup is True and results.medianame:
 if results.action == "movie" and results.lookup is False and results.mediaid and results.medianame:
     movieid = results.mediaid
     moviename = results.medianame
-    movieyear = results.year
+    movieyear = results.mediayear
     cursor.execute("select idmovie from movies where idmovie = %s and have is true" % movieid)
     indb = cursor.fetchone()
     if not indb:
