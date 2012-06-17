@@ -183,7 +183,7 @@ def get_episode(season,showname,theepisode):
 def get_season(season,showname,theepisode):
     # rss fun
     if theepisode == "all":
-        cursor.execute("select episode from episodes where idshow = %s and season = %s order by episode asc" % (showid,season))
+        cursor.execute("select episode from episodes where idshow = %s and season = %s and have is not true order by episode asc" % (showid,season))
         episodelist = cursor.fetchall()
         maglist = []
         for episode in episodelist:
