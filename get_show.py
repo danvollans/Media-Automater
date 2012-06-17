@@ -144,6 +144,7 @@ def torinfo_episode(rssurl,show,searcher):
 def update_show():
     cursor.execute ("select name,idshow from shows where follow is true")
     shows = cursor.fetchall()
+    updated_shows = []
     for show in shows:
         showname = show[0]
         showname = modify_badchars(showname)
@@ -164,6 +165,8 @@ def update_show():
                 cursor.execute("""select idepisode from episodes where idshow = %s and episode = %s and season = %s""" % (idshow,dl_season,dl_episode))
                 idepisode = cursor.fetchone()[0]
                 cursor.execute("INSERT INTO downloads (iddownload,type,fkid,tags,downloading) values(default,\"episodes\",%s,\"%s s%se%s\",b'0')" % (idepisode,modify_badchars(showname),seasonpadded,episodepadded))
+                updated_shows.append(showname)
+    return updated_shows
 
 def get_episode(season,showname,theepisode):
     episode = "%02d" % (int(theepisode))
@@ -245,9 +248,10 @@ def get_movie(idmovie,moviename,movieyear):
         print "Really couldn't find Torrent."
 
 if results.action == "update":
-    update_show()
-    print "Shows updated."
-
+    updated_shows = update_show()
+    for show in updated_shows:
+        print "%s updated!" % show
+ 
 if results.action == "show" and results.lookup is True and results.medianame:
     showname = results.medianame
     print "Looking up information for TV Show %s..." % showname
