@@ -72,7 +72,7 @@ def acquire(filetype,filepath,fileid,dlid,filename):
         # update the database
         cursor.execute("""update downloads set downloading = b'1' where iddownload = %s""" % dlid)
         dbconn.commit()
-        argsaria = ['aria2c', '-j', '16', '-s', '50', '-x', '16', '--dir=%s%s/Season %s/' % (showsdir,showname,season), '--out=%s - s%se%s%s' % (showname,seasonpad,episodepad,extension), '--check-certificate=false', 'https://%s:%s@cereal.whatbox.ca/private/%s/finished/%s' % (user,passwd,user,dlpath)]
+        argsaria = ['aria2c', '-j', '16', '-s', '50', '-x', '16', '--dir=%s%s/Season %s' % (showsdir,showname,season), '--out=%s - s%se%s%s' % (showname,seasonpad,episodepad,extension), '--check-certificate=false', 'https://%s:%s@cereal.whatbox.ca/private/%s/finished/%s' % (user,passwd,user,dlpath)]
         aria = subprocess.Popen(argsaria).wait()
         if aria == 0:
             # update both database tables
