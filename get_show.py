@@ -153,7 +153,7 @@ def update_show():
         showurl = 'http://www.dailytvtorrents.org/rss/show/%s?onlynew=yes&only=720&items=1' % show_safe
         (dl_url,dl_season,dl_episode) = torinfo_update(showurl,showname.lower())
         # for show get current season and episode
-        cursor.execute("select max(episode),max(season) from episodes where season = (select max(season) from episodes where idshow = %s) and idshow=%s and have is true" % (idshow,idshow))
+        cursor.execute("select max(season),max(episode) from episodes where season = (select max(season) from episodes where idshow = %s) and idshow=%s and have is true" % (idshow,idshow))
         showinfo = cursor.fetchone()
         (show_season,show_episode) = showinfo
         if dl_season >= show_season:
