@@ -153,11 +153,12 @@ def update_show():
         showurl = 'http://www.dailytvtorrents.org/rss/show/%s?onlynew=yes&only=720&items=1' % show_safe
         (dl_url,dl_season,dl_episode) = torinfo_update(showurl,showname.lower())
         # for show get current season and episode
-        cursor.execute("select max(episodes2.episode),max(episodes2.season) from episodes left join episodes episodes2 on episodes.idepisode=episodes2.idepisode and episodes.idshow = %s and episodes2.season = (select max(season) from episodes where idshow = %s);" % (idshow,idshow))
+        cursor.execute("elect max(episode),max(season) from episodes where season = (select max(season) from episodes where idshow = %s) and idshow=%s and have is true" % (idshow,idshow))
         showinfo = cursor.fetchone()
         (show_season,show_episode) = showinfo
         if dl_season >= show_season:
             if dl_episode > show_episode:
+                print "getting new episode %s - s%se%s" % (showname,dl_season,dl_episode)
                 stdin, stdout, stderr = ssh.exec_command("wget -P %s -c %s" % (watchdir,dl_url))
                 # get the idepisode
                 seasonpadded = "%02d" % int(dl_season)
