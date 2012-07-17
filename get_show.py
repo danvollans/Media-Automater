@@ -163,7 +163,7 @@ def update_show():
                 # get the idepisode
                 seasonpadded = "%02d" % int(dl_season)
                 episodepadded = "%02d" % int(dl_episode)
-                cursor.execute("""select idepisode from episodes where idshow = %s and episode = %s and season = %s""" % (idshow,dl_season,dl_episode))
+                cursor.execute("""select idepisode from episodes where idshow = %s and episode = %s and season = %s""" % (idshow,dl_episode,dl_season))
                 idepisode = cursor.fetchone()[0]
                 cursor.execute("INSERT INTO downloads (iddownload,type,fkid,tags,downloading) values(default,\"episodes\",%s,\"%s s%se%s\",b'0')" % (idepisode,modify_badchars(showname),seasonpadded,episodepadded))
                 updated_shows.append(showname)
